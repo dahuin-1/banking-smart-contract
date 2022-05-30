@@ -1,8 +1,8 @@
-module github.com/hyperledger/fabric-samples/chaincode/abstore/go
+module github.com/dahuin-1/banking-smart-contract/banking/module/go
 
 go 1.18
 
-require github.com/hyperledger/fabric-contract-api-go v1.1.0
+require github.com/hyperledger/fabric-contract-api-go v1.1.1
 
 require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
