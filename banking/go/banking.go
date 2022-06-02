@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	//"github.com/hyperledger/fabric/core/chaincode/shim"
-	//sc "github.com/hyperledger/fabric/protos/peer"
-	"github.com/hyperledger/fabric-chaincode-go/shim"
-	sc "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
+	sc "github.com/hyperledger/fabric/protos/peer"
+	//"github.com/hyperledger/fabric-chaincode-go/shim"
+	//sc "github.com/hyperledger/fabric-protos-go/peer"
 	"strconv"
 )
 
@@ -15,12 +15,12 @@ type SmartContract struct {
 }
 
 type Account struct {
-	Owner   string `json:"owner"`
-	Token   string `json:"token"`
-	Balance string `json:"balance"`
+	Owner string `json:"owner"`
+	//Token   string `json:"token"`
+	Balance int `json:"balance"`
 }
 
-func (t *SmartContract) Init(stub shim.ChaincodeStubInterface) sc.Response {
+func (t *SmartContract) Init() sc.Response {
 
 	//fmt.Println("Init")
 	//var err error
@@ -97,23 +97,24 @@ func (t *SmartContract) Invoke(stub shim.ChaincodeStubInterface) sc.Response {
 
 func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Response {
 	accounts := []Account{
-		Account{Owner: "Tomoko", Token: "BTC", Balance: "200"},
-		Account{Owner: "Brad", Token: "ETH", Balance: "100"},
-		Account{Owner: "Ji Soo", Token: "MLK", Balance: "500"},
-		Account{Owner: "Max", Token: "USDT", Balance: "1000"},
-		Account{Owner: "Amy", Token: "ETH", Balance: "300"},
-		Account{Owner: "Michel", Token: "MLK", Balance: "400"},
-		Account{Owner: "Ann", Token: "MLK", Balance: "600"},
-		Account{Owner: "Pari", Token: "BTC", Balance: "150"},
-		Account{Owner: "Valeria", Token: "USDT", Balance: "700"},
-		Account{Owner: "Shotaro" Token: "BTC", Balance: "800"},
+		Account{Owner: "Tomoko", Balance: 200},
+		Account{Owner: "Brad", Balance: 100},
+		Account{Owner: "Ji Soo", Balance: 500},
+		Account{Owner: "Max", Balance: 1000},
+		Account{Owner: "Amy", Balance: 300},
+		Account{Owner: "Michel", Balance: 400},
+		Account{Owner: "Ann", Balance: 600},
+		Account{Owner: "Pari", Balance: 150},
+		Account{Owner: "Valeria", Balance: 700},
+		Account{Owner: "Shotaro", Balance: 800},
 	}
 
 	i := 0
 	for i < len(accounts) {
 		fmt.Println("i is ", i)
 		accountAsBytes, _ := json.Marshal(accounts[i])
-		err := APIstub.PutState("Account"+strconv.Itoa(i), accountAsBytes)
+		owner := accounts[i].Owner
+		err := APIstub.PutState(owner, accountAsBytes)
 		if err != nil {
 			return sc.Response{}
 		}
@@ -126,14 +127,17 @@ func (s *SmartContract) initLedger(APIstub shim.ChaincodeStubInterface) sc.Respo
 
 func (s *SmartContract) createAccount(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
 
-	if len(args) != 4 {
-		return shim.Error("Incorrect number of arguments. Expecting 4")
+	if len(args) != 3 {
+		return shim.Error("Incorrect number of arguments. Expecting 3")
 	}
-
-	var account = Account{Owner: args[1], Token: args[2], Balance: args[3]}
+	strBalance, err := strconv.Atoi(args[2])
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	var account = Account{Owner: args[1], Balance: strBalance}
 
 	accountAsBytes, _ := json.Marshal(account)
-	err := APIstub.PutState(args[0], accountAsBytes)
+	err = APIstub.PutState(args[0], accountAsBytes)
 	if err != nil {
 		return sc.Response{}
 	}
@@ -142,58 +146,50 @@ func (s *SmartContract) createAccount(APIstub shim.ChaincodeStubInterface, args 
 }
 
 func (t *SmartContract) transfer(stub shim.ChaincodeStubInterface, args []string) sc.Response {
-	//(a,b,btc,10)
+	//(a,b,10)
 	var err error
-	var A, B string // Entities
-	var token string
-	var Aval, Bval int
-	var X int
+	var sender, receiver string // Entities
+	var remittance int
+	var Sval, Rval int
 
-	A = args[0]
-	B = args[1]
-	// Get the state from the ledger
-	senderAccountAsBytes, err := stub.GetState(A)
-	account := Account{}
+	sender = args[0]
+	receiver = args[1]
+
+	senderAccountAsBytes, err := stub.GetState(sender)
 	if err != nil {
 		return shim.Error("Failed to get state")
 	}
 	if senderAccountAsBytes == nil {
 		return shim.Error("Entity not found")
 	}
-	//json.Unmarshal(senderAccountAsBytes, &account)
-	Aval, _ = strconv.Atoi(string(senderAccountAsBytes))
-	json.Unmarshal(senderAccountAsBytes, &account)
+	Sval, _ = strconv.Atoi(string(senderAccountAsBytes))
 
-	receiverAccountAsBytes, err := stub.GetState(B)
+	receiverAccountAsBytes, err := stub.GetState(receiver)
 	if err != nil {
 		return shim.Error("Failed to get state")
 	}
 	if receiverAccountAsBytes == nil {
 		return shim.Error("Entity not found")
 	}
-	//json.Unmarshal(receiverAccountAsBytes, &account)
-	Bval, _ = strconv.Atoi(string(receiverAccountAsBytes[3]))
+	Rval, _ = strconv.Atoi(string(receiverAccountAsBytes))
 
-	token = args[2]
-	X, err = strconv.Atoi(args[3])
+	//	token = args[2]
+	remittance, err = strconv.Atoi(args[2])
+	if err != nil {
+		return shim.Error("Invalid transaction amount, expecting a integer value")
+	}
 
-
-
-
-
-
-	// Perform the execution
-	Aval = Aval - X
-	Bval = Bval + X
-	fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)
+	Sval = Sval - remittance
+	Rval = Rval + remittance
+	fmt.Printf("Sval = %d, Rval = %d\n", Sval, Rval)
 
 	// Write the state back to the ledger
-	err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
+	err = stub.PutState(sender, []byte(strconv.Itoa(Sval)))
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
-	err = stub.PutState(B, []byte(strconv.Itoa(Bval)))
+	err = stub.PutState(receiver, []byte(strconv.Itoa(Rval)))
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -220,6 +216,7 @@ func (t *SmartContract) query(stub shim.ChaincodeStubInterface, args []string) s
 	// Get the state from the ledger
 	Avalbytes, err := stub.GetState(A)
 	if err != nil {
+
 		jsonResp := "{\"Error\":\"Failed to get state for " + A + "\"}"
 		return shim.Error(jsonResp)
 	}
