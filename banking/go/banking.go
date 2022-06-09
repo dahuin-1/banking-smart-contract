@@ -46,26 +46,25 @@ func (c *Chaincode) createAccount(stub shim.ChaincodeStubInterface, args []strin
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
-	var numBalance int64
-	key := args[0]
+	var amount int64
 
-	accountAsBytes, err := stub.GetState(key)
+	accountAsBytes, err := stub.GetState(args[0])
 	if err != nil {
 		return shim.Error("Failed to get OwnerID: " + err.Error())
 	} else if accountAsBytes != nil {
-		fmt.Println("This ownerID already exists: " + key)
-		return shim.Error("This account already exists: " + key)
+		fmt.Println("This ownerID already exists: " + args[0])
+		return shim.Error("This account already exists: " + args[0])
 	}
-	numBalance, err = strBalToInt(args[1])
+	amount, err = strconv.ParseInt(args[1], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	var account = Account{OwnerID: args[0], Balance: numBalance}
+	var account = Account{OwnerID: args[0], Balance: amount}
 	accountAsBytes, err = json.Marshal(account)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = stub.PutState(key, accountAsBytes)
+	err = stub.PutState(args[0], accountAsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -109,7 +108,7 @@ func (c *Chaincode) transfer(stub shim.ChaincodeStubInterface, args []string) pe
 		return shim.Error(err.Error())
 	}
 
-	remittance, err = strBalToInt(args[2])
+	remittance, err = strconv.ParseInt(args[2], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -144,9 +143,7 @@ func (c *Chaincode) deleteAccount(stub shim.ChaincodeStubInterface, args []strin
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
-	var deletedAccount string
-	deletedAccount = args[0]
-	err := stub.DelState(deletedAccount)
+	err := stub.DelState(args[0])
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -158,12 +155,11 @@ func (c *Chaincode) getAccount(stub shim.ChaincodeStubInterface, args []string) 
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
 	}
-	key := args[0]
-	accountAsBytes, err := stub.GetState(key)
+	accountAsBytes, err := stub.GetState(args[0])
 	if err != nil {
 		return shim.Error(err.Error())
 	} else if accountAsBytes == nil {
-		return shim.Error("This account dose not exists: " + key)
+		return shim.Error("This account dose not exists: " + args[0])
 	}
 	return shim.Success(accountAsBytes)
 }
@@ -175,18 +171,17 @@ func (c *Chaincode) deposit(stub shim.ChaincodeStubInterface, args []string) pee
 	var amount int64
 	var targetAccount Account
 
-	key := args[0]
-	accountAsBytes, err := stub.GetState(key)
+	accountAsBytes, err := stub.GetState(args[0])
 	if err != nil {
 		return shim.Error(err.Error())
 	} else if accountAsBytes == nil {
-		return shim.Error("This account dose not exists: " + key)
+		return shim.Error("This account dose not exists: " + args[0])
 	}
 	err = json.Unmarshal(accountAsBytes, &targetAccount)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	amount, err = strBalToInt(args[1])
+	amount, err = strconv.ParseInt(args[1], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -195,7 +190,7 @@ func (c *Chaincode) deposit(stub shim.ChaincodeStubInterface, args []string) pee
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = stub.PutState(key, accountAsBytes)
+	err = stub.PutState(args[0], accountAsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
@@ -208,18 +203,17 @@ func (c *Chaincode) withdrawal(stub shim.ChaincodeStubInterface, args []string) 
 	}
 	var amount int64
 	var targetAccount Account
-	key := args[0]
-	accountAsBytes, err := stub.GetState(key)
+	accountAsBytes, err := stub.GetState(args[0])
 	if err != nil {
 		return shim.Error(err.Error())
 	} else if accountAsBytes == nil {
-		return shim.Error("This account dose not exists: " + key)
+		return shim.Error("This account dose not exists: " + args[0])
 	}
 	err = json.Unmarshal(accountAsBytes, &targetAccount)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	amount, err = strBalToInt(args[1])
+	amount, err = strconv.ParseInt(args[1], 10, 64)
 	if err != nil {
 		return shim.Error(err.Error())
 	} else if amount > targetAccount.Balance {
@@ -230,20 +224,20 @@ func (c *Chaincode) withdrawal(stub shim.ChaincodeStubInterface, args []string) 
 	if err != nil {
 		return shim.Error(err.Error())
 	}
-	err = stub.PutState(key, accountAsBytes)
+	err = stub.PutState(args[0], accountAsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 	return shim.Success(accountAsBytes)
 }
 
-func strBalToInt(strBal string) (iBal int64, err error) {
-	iBal, err = strconv.ParseInt(strBal, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return iBal, err
-}
+//func strToInt(strBal string) (iBal int64, err error) {
+//	iBal, err = strconv.ParseInt(strBal, 10, 64)
+//	if err != nil {
+//		return 0, err
+//	}
+//	return iBal, err
+//}
 
 func main() {
 	err := shim.Start(new(Chaincode))
