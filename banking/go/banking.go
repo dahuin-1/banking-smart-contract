@@ -25,16 +25,16 @@ func (c *Chaincode) Init(stub shim.ChaincodeStubInterface) peer.Response {
 
 func (c *Chaincode) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	function, args := stub.GetFunctionAndParameters()
-	if function == "transfer" {
-		return chaincode.transfer(stub, args)
+	if function == "createAccount" {
+		return chaincode.createAccount(stub, args)
 	} else if function == "deleteAccount" {
 		return chaincode.deleteAccount(stub, args)
-	} else if function == "getAccount" {
-		return chaincode.getAccount(stub, args)
-	} else if function == "createAccount" {
-		return chaincode.createAccount(stub, args)
 	} else if function == "deposit" {
 		return chaincode.deposit(stub, args)
+	} else if function == "getAccount" {
+		return chaincode.getAccount(stub, args)
+	} else if function == "transfer" {
+		return chaincode.transfer(stub, args)
 	} else if function == "withdrawal" {
 		return chaincode.withdrawal(stub, args)
 	}
@@ -67,6 +67,64 @@ func (c *Chaincode) createAccount(stub shim.ChaincodeStubInterface, args []strin
 	err = stub.PutState(args[0], accountAsBytes)
 	if err != nil {
 		return shim.Error(err.Error())
+	}
+	return shim.Success(accountAsBytes)
+}
+
+func (c *Chaincode) deleteAccount(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+	err := stub.DelState(args[0])
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(nil)
+}
+
+func (c *Chaincode) deposit(stub shim.ChaincodeStubInterface, args []string) peer.Response { //입금
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+	var amount int64
+	var targetAccount Account
+
+	accountAsBytes, err := stub.GetState(args[0])
+	if err != nil {
+		return shim.Error(err.Error())
+	} else if accountAsBytes == nil {
+		return shim.Error("This account dose not exists: " + args[0])
+	}
+	err = json.Unmarshal(accountAsBytes, &targetAccount)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	amount, err = strconv.ParseInt(args[1], 10, 64)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	targetAccount.Balance = targetAccount.Balance + amount
+	accountAsBytes, err = json.Marshal(targetAccount)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	err = stub.PutState(args[0], accountAsBytes)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(accountAsBytes)
+}
+
+func (c *Chaincode) getAccount(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	//(a)
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+	accountAsBytes, err := stub.GetState(args[0])
+	if err != nil {
+		return shim.Error(err.Error())
+	} else if accountAsBytes == nil {
+		return shim.Error("This account dose not exists: " + args[0])
 	}
 	return shim.Success(accountAsBytes)
 }
@@ -137,64 +195,6 @@ func (c *Chaincode) transfer(stub shim.ChaincodeStubInterface, args []string) pe
 		return shim.Error(err.Error())
 	}
 	return shim.Success(senderAccountAsBytes)
-}
-
-func (c *Chaincode) deleteAccount(stub shim.ChaincodeStubInterface, args []string) peer.Response {
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
-	}
-	err := stub.DelState(args[0])
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	return shim.Success(nil)
-}
-
-func (c *Chaincode) getAccount(stub shim.ChaincodeStubInterface, args []string) peer.Response {
-	//(a)
-	if len(args) != 1 {
-		return shim.Error("Incorrect number of arguments. Expecting 1")
-	}
-	accountAsBytes, err := stub.GetState(args[0])
-	if err != nil {
-		return shim.Error(err.Error())
-	} else if accountAsBytes == nil {
-		return shim.Error("This account dose not exists: " + args[0])
-	}
-	return shim.Success(accountAsBytes)
-}
-
-func (c *Chaincode) deposit(stub shim.ChaincodeStubInterface, args []string) peer.Response { //입금
-	if len(args) != 2 {
-		return shim.Error("Incorrect number of arguments. Expecting 2")
-	}
-	var amount int64
-	var targetAccount Account
-
-	accountAsBytes, err := stub.GetState(args[0])
-	if err != nil {
-		return shim.Error(err.Error())
-	} else if accountAsBytes == nil {
-		return shim.Error("This account dose not exists: " + args[0])
-	}
-	err = json.Unmarshal(accountAsBytes, &targetAccount)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	amount, err = strconv.ParseInt(args[1], 10, 64)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	targetAccount.Balance = targetAccount.Balance + amount
-	accountAsBytes, err = json.Marshal(targetAccount)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	err = stub.PutState(args[0], accountAsBytes)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	return shim.Success(accountAsBytes)
 }
 
 func (c *Chaincode) withdrawal(stub shim.ChaincodeStubInterface, args []string) peer.Response { //출금
