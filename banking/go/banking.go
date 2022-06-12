@@ -41,8 +41,10 @@ func (c *Chaincode) Invoke(stub shim.ChaincodeStubInterface) peer.Response {
 	return shim.Error("Invalid function name")
 }
 
+// params:
+//   - OwnerID: a name of the account
+//   - Balance : initial balance
 func (c *Chaincode) createAccount(stub shim.ChaincodeStubInterface, args []string) peer.Response {
-	//(a,100)
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2")
 	}
@@ -71,6 +73,8 @@ func (c *Chaincode) createAccount(stub shim.ChaincodeStubInterface, args []strin
 	return shim.Success(accountAsBytes)
 }
 
+// params:
+//   - OwnerID: a name of the account
 func (c *Chaincode) deleteAccount(stub shim.ChaincodeStubInterface, args []string) peer.Response {
 	if len(args) != 1 {
 		return shim.Error("Incorrect number of arguments. Expecting 1")
